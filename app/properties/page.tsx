@@ -56,8 +56,6 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
     return (
         <div className="container mx-auto px-4 py-8">
             <PropertySearch
-                defaultLocation={location}
-                defaultGuests={guests}
                 defaultStartDate={startDate}
                 defaultEndDate={endDate}
             />

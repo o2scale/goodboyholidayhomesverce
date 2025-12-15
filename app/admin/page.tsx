@@ -138,6 +138,7 @@ export default function AdminPage() {
                                     <TableHead>Property</TableHead>
                                     <TableHead>Customer</TableHead>
                                     <TableHead>Dates</TableHead>
+                                    <TableHead>Meals</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -165,6 +166,9 @@ export default function AdminPage() {
                                                         {format(new Date(booking.startDate), "MMM d")} - {format(new Date(booking.endDate), "MMM d")}
                                                     </div>
                                                     <div className="text-xs text-muted-foreground">{booking.guestCount} Guests</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="text-sm">{booking.includeMeals ? "Yes" : "No"}</span>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant={booking.status === 'confirmed' ? "default" : booking.status === 'rejected' ? "destructive" : "secondary"}>

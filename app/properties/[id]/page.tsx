@@ -1,9 +1,8 @@
-import { getProperty, getProperties } from "@/lib/data";
+import { getProperty, getProperties, getBookings } from "@/lib/data";
 import { BookingForm } from "@/components/booking-form";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { MapPin, Users, Wifi, Wind, Car, Utensils } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { PropertyGallery } from "@/components/property-gallery";
 
 interface PageProps {
     params: Promise<{
@@ -19,15 +18,21 @@ export async function generateStaticParams() {
     }));
 }
 
-import { PropertyGallery } from "@/components/property-gallery";
-
 export default async function PropertyPage({ params }: PageProps) {
     const { id } = await params;
     const property = await getProperty(id);
+    const bookings = await getBookings();
 
     if (!property) {
         notFound();
     }
+
+    const blockedDates = bookings
+        .filter(b => b.propertyId === id && b.status === "confirmed")
+        .map(b => ({
+            from: new Date(b.startDate),
+            to: new Date(b.endDate)
+        }));
 
     // Helper to get icon for amenity
     const getAmenityIcon = (amenity: string) => {
@@ -93,7 +98,7 @@ export default async function PropertyPage({ params }: PageProps) {
 
                 {/* Sidebar / Booking Form */}
                 <div className="md:col-span-1">
-                    <BookingForm property={property} />
+                    <BookingForm property={property} blockedDates={blockedDates} />
                 </div>
             </div>
         </div>

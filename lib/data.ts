@@ -23,6 +23,7 @@ export interface Booking {
     customerName: string;
     customerEmail: string;
     customerPhone?: string;
+    includeMeals?: boolean;
 }
 
 export interface User {
@@ -57,7 +58,7 @@ const INITIAL_PROPERTIES: Property[] = [
         ],
         rating: 4.9,
         maxGuests: 8,
-        amenities: ['Mountain View', 'Private Garden', 'Campfire area', 'Full Kitchen', 'Caretaker']
+        amenities: ['Mountain View', 'Private Garden', 'Campfire area', 'Full Kitchen', 'Caretaker', 'Homely Meals (on pre-order)']
     },
     {
         id: '2',
@@ -72,7 +73,7 @@ const INITIAL_PROPERTIES: Property[] = [
         ],
         rating: 4.8,
         maxGuests: 6,
-        amenities: ['Valley View', 'Spice Plantation Walk', 'Home Cooked Meals', 'Wifi', 'Parking']
+        amenities: ['Valley View', 'Spice Plantation Walk', 'Home Cooked Meals', 'Wifi', 'Parking', 'Homely Meals (on pre-order)']
     },
     {
         id: '3',
@@ -87,7 +88,7 @@ const INITIAL_PROPERTIES: Property[] = [
         ],
         rating: 4.7,
         maxGuests: 5,
-        amenities: ['Fireplace', 'Lawn', 'Heater', 'Kitchen', 'Pet Friendly']
+        amenities: ['Fireplace', 'Lawn', 'Heater', 'Kitchen', 'Pet Friendly', 'Homely Meals (on pre-order)']
     }
 ];
 

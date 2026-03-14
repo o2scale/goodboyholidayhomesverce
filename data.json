@@ -2,16 +2,18 @@
   "properties": [
     {
       "id": "1",
-      "title": "Misty Mountain Villa",
+      "title": "Blue Elephant Cottage",
       "description": "A private 3-bedroom villa nestled in the tea plantations of Munnar. Enjoy panoramic views of the Western Ghats from your balcony. Perfect for families seeking complete privacy and nature.",
-      "price": 450,
-      "location": "Munnar, Kerala",
+      "price": 4000,
+      "location": "Anakulam, Mankulam, Idukki",
       "images": [
-        "/uploads/1765375695115-Screenshot_from_2025-12-07_09-57-04.png",
-        "https://images.unsplash.com/photo-1542718610-a1d656d1884c?auto=format&fit=crop&q=80",
-        "https://images.unsplash.com/photo-1600596542815-27b88e39e569?auto=format&fit=crop&q=80",
-        "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&q=80",
-        "https://images.unsplash.com/photo-1613545325278-f24b0cae1224?auto=format&fit=crop&q=80"
+        "/uploads/1773478790638-Blue_Elephant_Cottage1.jpeg",
+        "/uploads/1773478790643-Blue_Elephant_Cottage2.jpeg",
+        "/uploads/1773478790645-Blue_Elephant_Cottage3.jpeg",
+        "/uploads/1773478790646-Blue_Elephant_Cottage4.jpeg",
+        "/uploads/1773478790647-Blue_Elephant_Cottage5.jpeg",
+        "/uploads/1773478790651-Blue_Elephant_Cottage6.jpeg",
+        "/uploads/1773478790653-Blue_Elephant_Cottage7.jpeg"
       ],
       "rating": 4.9,
       "maxGuests": 8,
@@ -25,14 +27,18 @@
     },
     {
       "id": "2",
-      "title": "Wayanad Cloud Home",
+      "title": "Golden River Homestay",
       "description": "Experience living in the clouds. This heritage bungalow offers a serene escape with modern comforts. Surrounded by coffee estates and spice gardens.",
-      "price": 350,
-      "location": "Wayanad, Kerala",
+      "price": 4000,
+      "location": "Pambumkayam, Mankulam, Idukki",
       "images": [
-        "https://images.unsplash.com/photo-1587595431973-160d0d94add1?auto=format&fit=crop&q=80",
-        "https://images.unsplash.com/photo-1542718610-a1d656d1884c?auto=format&fit=crop&q=80",
-        "https://images.unsplash.com/photo-1598228723793-52759bba239c?auto=format&fit=crop&q=80"
+        "/uploads/1773478907693-Golden_River_Homestay1.jpeg",
+        "/uploads/1773478907695-Golden_River_Homestay2.jpeg",
+        "/uploads/1773478907696-Golden_River_Homestay3.jpeg",
+        "/uploads/1773478907697-Golden_River_Homestay4.jpeg",
+        "/uploads/1773478907698-Golden_River_Homestay5.jpeg",
+        "/uploads/1773478907700-Golden_River_Homestay6.jpeg",
+        "/uploads/1773478907703-Golden_River_Homestay7.jpeg"
       ],
       "rating": 4.8,
       "maxGuests": 6,
@@ -46,14 +52,20 @@
     },
     {
       "id": "3",
-      "title": "Ooty Heritage Cottage",
+      "title": "Mudhouse",
       "description": "A charming colonial-style cottage in the heart of the Nilgiris. Cozy up by the fireplace after a day of exploring. Walking distance to the lake.",
-      "price": 300,
-      "location": "Ooty, Tamil Nadu",
+      "price": 3000,
+      "location": "Muthuvankudi, Anachal",
       "images": [
-        "/uploads/1765375717953-Screenshot_from_2025-12-07_11-59-36.png",
-        "https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&q=80",
-        "https://images.unsplash.com/photo-1583608205776-bfd35f0d9f83?auto=format&fit=crop&q=80"
+        "/uploads/1773480457348-Mudhouse1.jpeg",
+        "/uploads/1773480457351-Mudhouse2.jpeg",
+        "/uploads/1773480457363-Mudhouse3.jpeg",
+        "/uploads/1773480457366-Mudhouse4.jpeg",
+        "/uploads/1773480457367-Mudhouse5.jpeg",
+        "/uploads/1773480457368-Mudhouse6.jpeg",
+        "/uploads/1773480457370-Mudhouse7.jpeg",
+        "/uploads/1773480457371-Mudhouse8.jpeg",
+        "/uploads/1773480457372-Mudhouse9.jpeg"
       ],
       "rating": 4.7,
       "maxGuests": 5,
@@ -64,6 +76,21 @@
         "Kitchen",
         "Pet Friendly"
       ]
+    },
+    {
+      "id": "408v2kmgc",
+      "title": "Tree House",
+      "description": "Tree House",
+      "price": 3000,
+      "location": "Muthuvankudi, Anachal, Idukki",
+      "images": [
+        "/uploads/1773480543026-Treehouse1.jpeg",
+        "/uploads/1773480543028-Treehouse2.jpeg",
+        "/uploads/1773480543029-Treehouse3.jpeg"
+      ],
+      "rating": 0,
+      "maxGuests": 4,
+      "amenities": []
     }
   ],
   "bookings": [],

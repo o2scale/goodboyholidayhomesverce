@@ -5,27 +5,32 @@ import { join } from 'path';
 export async function POST(request: Request) {
     try {
         const formData = await request.formData();
-        const file = formData.get('file') as File;
+        const files = formData.getAll('file') as File[];
 
-        if (!file) {
-            return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+        if (!files || files.length === 0) {
+            return NextResponse.json({ error: 'No files uploaded' }, { status: 400 });
         }
 
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        const urls: string[] = [];
 
         // Ensure uploads dir exists
         const uploadDir = join(process.cwd(), 'public', 'uploads');
         await mkdir(uploadDir, { recursive: true });
 
-        // Generate unique filename
-        const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-        const path = join(uploadDir, filename);
+        for (const file of files) {
+            const bytes = await file.arrayBuffer();
+            const buffer = Buffer.from(bytes);
 
-        await writeFile(path, buffer);
+            // Generate unique filename
+            const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+            const path = join(uploadDir, filename);
 
-        // Return relative URL for frontend
-        return NextResponse.json({ url: `/uploads/${filename}` });
+            await writeFile(path, buffer);
+            urls.push(`/uploads/${filename}`);
+        }
+
+        // Return relative URLs for frontend
+        return NextResponse.json({ urls });
     } catch (e) {
         console.error(e);
         return NextResponse.json({ error: 'Upload failed' }, { status: 500 });

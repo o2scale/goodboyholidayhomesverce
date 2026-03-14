@@ -20,7 +20,10 @@ export async function POST(request: Request) {
         const body = await request.json();
 
         // Basic validation
-        if (!body.title || !body.description || !body.price || !body.location) {
+        if (body.title === undefined || body.title === '' ||
+            body.description === undefined || body.description === '' ||
+            body.price === undefined ||
+            body.location === undefined || body.location === '') {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 

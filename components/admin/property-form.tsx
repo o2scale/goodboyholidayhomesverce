@@ -21,14 +21,11 @@ export function PropertyForm({ initialData, onSubmit, onCancel }: PropertyFormPr
     // Form State
     const [images, setImages] = useState<string[]>(initialData?.images || []);
     const [currentImageUrl, setCurrentImageUrl] = useState("");
-
-    // Default values for other fields handled by native form inputs, 
-    // but typically controlled state is better for complex validation. 
-    // We'll use native FormData for simplicity where possible, but images need state.
+    const [uploadingFiles, setUploadingFiles] = useState<{ id: string, name: string }[]>([]);
 
     const handleAddImage = () => {
         if (!currentImageUrl) return;
-        if (images.length >= 15) {
+        if (images.length + uploadingFiles.length >= 15) {
             alert("Maximum 15 images allowed.");
             return;
         }
@@ -46,6 +43,10 @@ export function PropertyForm({ initialData, onSubmit, onCancel }: PropertyFormPr
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (uploadingFiles.length > 0) {
+            alert("Please wait for all images to finish uploading.");
+            return;
+        }
         setIsLoading(true);
 
         const formData = new FormData(e.currentTarget);
@@ -114,24 +115,34 @@ export function PropertyForm({ initialData, onSubmit, onCancel }: PropertyFormPr
                     <Label>Gallery Images ({images.length}/15)</Label>
                     <div className="flex gap-2">
                         <Button type="button" variant="secondary" onClick={() => document.getElementById('image-upload')?.click()}>
-                            <Plus className="w-4 h-4 mr-2" /> Upload Image
+                            <Plus className="w-4 h-4 mr-2" /> Upload Images
                         </Button>
                         <input
                             id="image-upload"
                             type="file"
                             accept="image/*"
+                            multiple
                             className="hidden"
                             onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
+                                const selectedFiles = Array.from(e.target.files || []);
+                                if (selectedFiles.length === 0) return;
 
-                                if (images.length >= 15) {
+                                if (images.length + uploadingFiles.length + selectedFiles.length > 15) {
                                     alert("Maximum 15 images allowed.");
                                     return;
                                 }
 
+                                const newUploadingFiles = selectedFiles.map(file => ({
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    name: file.name
+                                }));
+
+                                setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
+
                                 const formData = new FormData();
-                                formData.append('file', file);
+                                selectedFiles.forEach(file => {
+                                    formData.append('file', file);
+                                });
 
                                 try {
                                     const res = await fetch('/api/upload', {
@@ -139,13 +150,15 @@ export function PropertyForm({ initialData, onSubmit, onCancel }: PropertyFormPr
                                         body: formData
                                     });
                                     if (res.ok) {
-                                        const { url } = await res.json();
-                                        setImages([...images, url]);
+                                        const { urls } = await res.json();
+                                        setImages(prev => [...prev, ...urls]);
                                     } else {
                                         alert("Upload failed.");
                                     }
                                 } catch (err) {
                                     alert("Upload error.");
+                                } finally {
+                                    setUploadingFiles(prev => prev.filter(f => !newUploadingFiles.find(nf => nf.id === f.id)));
                                 }
                                 // Reset input
                                 e.target.value = '';
@@ -172,7 +185,7 @@ export function PropertyForm({ initialData, onSubmit, onCancel }: PropertyFormPr
                     </Button>
                 </div>
 
-                {images.length > 0 ? (
+                {(images.length > 0 || uploadingFiles.length > 0) ? (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                         {images.map((img, i) => (
                             <div key={i} className="group relative aspect-square rounded-md overflow-hidden border bg-background hover:shadow-md transition-all">
@@ -211,6 +224,14 @@ export function PropertyForm({ initialData, onSubmit, onCancel }: PropertyFormPr
                                 {i === 0 && (
                                     <Badge className="absolute bottom-2 left-2 bg-green-500 hover:bg-green-600 pointer-events-none">Cover Image</Badge>
                                 )}
+                            </div>
+                        ))}
+
+                        {/* Uploading Placeholders */}
+                        {uploadingFiles.map(file => (
+                            <div key={file.id} className="relative aspect-square rounded-md overflow-hidden border bg-muted animate-pulse flex flex-col items-center justify-center text-center p-2">
+                                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mb-1" />
+                                <span className="text-[10px] text-muted-foreground truncate w-full px-1">{file.name}</span>
                             </div>
                         ))}
                     </div>

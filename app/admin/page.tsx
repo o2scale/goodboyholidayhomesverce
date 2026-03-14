@@ -332,7 +332,8 @@ export default function AdminPage() {
                                                 setIsCreating(false);
                                                 setSelectedPropertyForEdit(undefined);
                                             } else {
-                                                alert("Operation failed.");
+                                                const errorData = await res.json().catch(() => ({}));
+                                                alert(`Operation failed: ${errorData.error || "Unknown error"}`);
                                             }
                                         } catch (e) {
                                             alert("Error occurred.");

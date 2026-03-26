@@ -1,11 +1,25 @@
 import { Hero } from "@/components/hero";
 import { PropertyCard } from "@/components/property-card";
 import { FeaturesSection, TestimonialsSection, CTASection } from "@/components/home-sections";
-import { getProperties } from "@/lib/data";
 import { FadeIn } from "@/components/animations";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { Property } from "@/lib/types";
 
 export default async function Home() {
-  const properties = await getProperties();
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.from("properties").select("*");
+
+  const properties: Property[] = (data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    price: row.price,
+    location: row.location,
+    images: row.images ?? [],
+    rating: row.rating ?? 0,
+    maxGuests: row.max_guests,
+    amenities: row.amenities ?? [],
+  }));
 
   return (
     <div className="min-h-screen pb-20">

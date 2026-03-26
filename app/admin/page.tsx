@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Booking, Property } from "@/lib/data";
+import { Booking, Property } from "@/lib/types";
 import {
     Table,
     TableBody,
@@ -43,8 +43,8 @@ export default function AdminPage() {
             ]);
             const bookingsData = await bookingsRes.json();
             const propertiesData = await propertiesRes.json();
-            setBookings(bookingsData);
-            setProperties(propertiesData);
+            setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+            setProperties(Array.isArray(propertiesData) ? propertiesData : []);
         } catch (e) {
             console.error("Failed to fetch data", e);
         } finally {

@@ -1,38 +1,71 @@
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
-import { getBookings, getProperties } from "@/lib/data";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { redirect } from "next/navigation";
-
-const SECRET_KEY = new TextEncoder().encode(
-    process.env.JWT_SECRET || "default_secret_key_change_me"
-);
+import type { Booking, Property } from "@/lib/types";
 
 export default async function DashboardPage() {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("session")?.value;
+    const supabase = await createSupabaseServerClient();
 
-    if (!token) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
         redirect("/login");
     }
 
-    let userEmail = "";
-    let userName = "";
+    // Get user profile for display name
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", user.id)
+        .single();
 
-    try {
-        const { payload } = await jwtVerify(token, SECRET_KEY);
-        userEmail = payload.email as string;
-        userName = payload.name as string;
-    } catch (e) {
-        redirect("/login");
+    const userName = profile?.name || user.email || "User";
+
+    // Get bookings for this user
+    const { data: bookingsData } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("user_id", user.id);
+
+    const myBookings: Booking[] = (bookingsData ?? []).map((row) => ({
+        id: row.id,
+        propertyId: row.property_id,
+        userId: row.user_id ?? null,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        guestCount: row.guest_count,
+        status: row.status,
+        customerName: row.customer_name,
+        customerEmail: row.customer_email,
+        customerPhone: row.customer_phone ?? null,
+        includeMeals: row.include_meals ?? false,
+    }));
+
+    // Resolve property names for the user's bookings
+    const propertyIds = [...new Set(myBookings.map(b => b.propertyId))];
+    let propertiesMap: Record<string, Property> = {};
+
+    if (propertyIds.length > 0) {
+        const { data: propertiesData } = await supabase
+            .from("properties")
+            .select("*")
+            .in("id", propertyIds);
+
+        for (const row of propertiesData ?? []) {
+            propertiesMap[row.id] = {
+                id: row.id,
+                title: row.title,
+                description: row.description,
+                price: row.price,
+                location: row.location,
+                images: row.images ?? [],
+                rating: row.rating ?? 0,
+                maxGuests: row.max_guests,
+                amenities: row.amenities ?? [],
+            };
+        }
     }
-
-    const bookings = await getBookings();
-    const properties = await getProperties();
-
-    // Filter bookings for this user
-    const myBookings = bookings.filter(b => b.customerEmail === userEmail);
 
     return (
         <div className="container mx-auto px-4 py-8">
@@ -46,13 +79,13 @@ export default async function DashboardPage() {
 
                 {myBookings.length === 0 ? (
                     <div className="bg-muted/30 border rounded-xl p-8 text-center text-muted-foreground">
-                        <p>You haven't made any bookings yet.</p>
+                        <p>You haven&apos;t made any bookings yet.</p>
                         <a href="/properties" className="text-primary hover:underline mt-2 inline-block">Explore our properties</a>
                     </div>
                 ) : (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {myBookings.map(booking => {
-                            const property = properties.find(p => p.id === booking.propertyId);
+                            const property = propertiesMap[booking.propertyId];
                             return (
                                 <div key={booking.id} className="border rounded-xl bg-card p-6 shadow-sm hover:shadow-md transition-shadow">
                                     <div className="flex justify-between items-start mb-4">

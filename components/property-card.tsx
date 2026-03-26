@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Star, MapPin } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Property } from "@/lib/data";
+import { Property } from "@/lib/types";
 
 interface PropertyCardProps {
     property: Property;
@@ -41,7 +41,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
                 </CardContent>
                 <CardFooter className="p-4 pt-0 flex items-center justify-between">
                     <div className="flex items-baseline gap-1">
-                        <span className="text-md font-bold">${property.price}</span>
+                        <span className="text-md font-bold">₹{property.price}</span>
                         <span className="text-muted-foreground text-sm">/ night</span>
                     </div>
                     <div className="text-xs text-muted-foreground">

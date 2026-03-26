@@ -1,8 +1,9 @@
-import { getProperty, getProperties, getBookings } from "@/lib/data";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { BookingForm } from "@/components/booking-form";
 import { notFound } from "next/navigation";
 import { MapPin, Users, Wifi, Wind, Car, Utensils } from "lucide-react";
 import { PropertyGallery } from "@/components/property-gallery";
+import type { Property, Booking } from "@/lib/types";
 
 interface PageProps {
     params: Promise<{
@@ -10,25 +11,49 @@ interface PageProps {
     }>;
 }
 
-// Generate static params for all known properties
-export async function generateStaticParams() {
-    const properties = await getProperties();
-    return properties.map((p) => ({
-        id: p.id,
-    }));
-}
-
 export default async function PropertyPage({ params }: PageProps) {
     const { id } = await params;
-    const property = await getProperty(id);
-    const bookings = await getBookings();
 
-    if (!property) {
+    const supabase = await createSupabaseServerClient();
+
+    const [propertyRes, bookingsRes] = await Promise.all([
+        supabase.from("properties").select("*").eq("id", id).single(),
+        supabase.from("bookings").select("*").eq("property_id", id),
+    ]);
+
+    if (propertyRes.error || !propertyRes.data) {
         notFound();
     }
 
+    const row = propertyRes.data;
+    const property: Property = {
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        price: row.price,
+        location: row.location,
+        images: row.images ?? [],
+        rating: row.rating ?? 0,
+        maxGuests: row.max_guests,
+        amenities: row.amenities ?? [],
+    };
+
+    const bookings: Booking[] = (bookingsRes.data ?? []).map((b) => ({
+        id: b.id,
+        propertyId: b.property_id,
+        userId: b.user_id ?? null,
+        startDate: b.start_date,
+        endDate: b.end_date,
+        guestCount: b.guest_count,
+        status: b.status,
+        customerName: b.customer_name,
+        customerEmail: b.customer_email,
+        customerPhone: b.customer_phone ?? null,
+        includeMeals: b.include_meals ?? false,
+    }));
+
     const blockedDates = bookings
-        .filter(b => b.propertyId === id && b.status === "confirmed")
+        .filter(b => b.status === "confirmed" || b.status === "blocked")
         .map(b => ({
             from: new Date(b.startDate),
             to: new Date(b.endDate)

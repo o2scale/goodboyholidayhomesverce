@@ -1,45 +1,116 @@
 import { NextResponse } from 'next/server';
-import { getUsers, createUser } from '@/lib/data';
-import { jwtVerify } from 'jose';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
-const SECRET_KEY = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'default_secret_key_change_me'
-);
+async function requireAdmin() {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-async function isAdmin(request: Request) {
-    const token = request.headers.get('cookie')?.split('session=')[1]?.split(';')[0];
-    if (!token) return false;
-    try {
-        const { payload } = await jwtVerify(token, SECRET_KEY);
-        return payload.role === 'admin';
-    } catch {
-        return false;
+    if (error || !user) {
+        return null;
     }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+    if (!profile || profile.role !== 'admin') {
+        return null;
+    }
+
+    return user;
 }
 
-export async function GET(request: Request) {
-    if (!await isAdmin(request)) {
+export async function GET() {
+    const admin = await requireAdmin();
+    if (!admin) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const users = await getUsers();
+
+    const supabaseAdmin = getSupabaseAdmin();
+
+    // Get profiles
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+        .from('profiles')
+        .select('*');
+
+    if (profilesError) {
+        return NextResponse.json({ error: profilesError.message }, { status: 500 });
+    }
+
+    // Get auth users to join emails
+    const { data: { users: authUsers }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+
+    if (authError) {
+        return NextResponse.json({ error: authError.message }, { status: 500 });
+    }
+
+    const authMap = new Map(authUsers.map(u => [u.id, u]));
+
+    const users = (profiles ?? []).map(p => ({
+        id: p.id,
+        name: p.name,
+        email: authMap.get(p.id)?.email ?? p.email ?? '',
+        phone: p.phone ?? null,
+        role: p.role,
+    }));
+
     return NextResponse.json(users);
 }
 
 export async function POST(request: Request) {
-    if (!await isAdmin(request)) {
+    const admin = await requireAdmin();
+    if (!admin) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
     try {
         const body = await request.json();
-        // Force password hash or plain text as per current implementation
-        const newUser = await createUser({
-            ...body,
-            passwordHash: body.password,
-            // Allow role to be set, default to customer if not provided
-            role: body.role || 'customer'
+        const { name, email, password, role, phone } = body;
+
+        if (!name || !email || !password) {
+            return NextResponse.json({ error: 'Missing required fields (name, email, password)' }, { status: 400 });
+        }
+
+        const supabaseAdmin = getSupabaseAdmin();
+
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: { name, role: role || 'customer' },
         });
-        return NextResponse.json(newUser);
-    } catch (e: any) {
-        return NextResponse.json({ error: e.message || 'Failed to create user' }, { status: 400 });
+
+        if (authError) {
+            return NextResponse.json({ error: authError.message }, { status: 400 });
+        }
+
+        // Create profile row
+        const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .insert({
+                id: authData.user.id,
+                name,
+                email,
+                phone: phone || null,
+                role: role || 'customer',
+            });
+
+        if (profileError) {
+            console.error('Profile creation error:', profileError);
+        }
+
+        return NextResponse.json({
+            id: authData.user.id,
+            name,
+            email,
+            phone: phone || null,
+            role: role || 'customer',
+        });
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to create user';
+        return NextResponse.json({ error: message }, { status: 400 });
     }
 }

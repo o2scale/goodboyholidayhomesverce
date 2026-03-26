@@ -1,6 +1,7 @@
-
 import { PropertyCard } from "@/components/property-card";
-import { getProperties, getBookings } from "@/lib/data";
+import { PropertySearch } from "@/components/property-search";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { Property, Booking } from "@/lib/types";
 
 interface PropertiesPageProps {
     searchParams: Promise<{
@@ -11,12 +12,41 @@ interface PropertiesPageProps {
     }>;
 }
 
-import { PropertySearch } from "@/components/property-search";
-
 export default async function PropertiesPage({ searchParams }: PropertiesPageProps) {
     const { location, guests, startDate, endDate } = await searchParams;
-    const allProperties = await getProperties();
-    const allBookings = await getBookings();
+
+    const supabase = await createSupabaseServerClient();
+
+    const [propertiesRes, bookingsRes] = await Promise.all([
+        supabase.from("properties").select("*"),
+        supabase.from("bookings").select("*"),
+    ]);
+
+    const allProperties: Property[] = (propertiesRes.data ?? []).map((row) => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        price: row.price,
+        location: row.location,
+        images: row.images ?? [],
+        rating: row.rating ?? 0,
+        maxGuests: row.max_guests,
+        amenities: row.amenities ?? [],
+    }));
+
+    const allBookings: Booking[] = (bookingsRes.data ?? []).map((row) => ({
+        id: row.id,
+        propertyId: row.property_id,
+        userId: row.user_id ?? null,
+        startDate: row.start_date,
+        endDate: row.end_date,
+        guestCount: row.guest_count,
+        status: row.status,
+        customerName: row.customer_name,
+        customerEmail: row.customer_email,
+        customerPhone: row.customer_phone ?? null,
+        includeMeals: row.include_meals ?? false,
+    }));
 
     // Filtering Logic
     const filteredProperties = allProperties.filter(property => {
@@ -38,12 +68,11 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
             // Check for any confirmed booking that overlaps
             const hasConflict = allBookings.some(booking => {
                 if (booking.propertyId !== property.id) return false;
-                if (booking.status === 'rejected') return false; // Rejected bookings don't block
+                if (booking.status === 'rejected') return false;
 
                 const bookingStart = new Date(booking.startDate);
                 const bookingEnd = new Date(booking.endDate);
 
-                // Overlap formula: (StartA <= EndB) and (EndA >= StartB)
                 return (start <= bookingEnd) && (end >= bookingStart);
             });
 

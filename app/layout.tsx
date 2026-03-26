@@ -3,6 +3,7 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,32 +20,30 @@ export const metadata: Metadata = {
   description: "Luxury holiday homes for rent. Experience comfort and style.",
 };
 
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
-
-const SECRET_KEY = new TextEncoder().encode(
-  process.env.JWT_SECRET || "default_secret_key_change_me"
-);
-
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("session")?.value;
-  let user = null;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (token) {
-    try {
-      const { payload } = await jwtVerify(token, SECRET_KEY);
-      user = {
-        name: payload.name as string,
-        email: payload.email as string,
-        role: payload.role as string,
+  let navUser = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('name, role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile) {
+      navUser = {
+        name: profile.name as string,
+        email: user.email ?? '',
+        role: profile.role as string,
       };
-    } catch (e) {
-      // Invalid token
     }
   }
 
@@ -53,7 +52,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
-        <Navbar user={user} />
+        <Navbar user={navUser} />
         <main className="flex-1">
           {children}
         </main>

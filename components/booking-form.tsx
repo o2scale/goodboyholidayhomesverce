@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, addDays } from "date-fns";
 import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Property } from "@/lib/data";
+import { Property } from "@/lib/types";
 import { DateRange } from "react-day-picker";
 
 interface BookingFormProps {
@@ -94,7 +94,7 @@ export function BookingForm({ property, blockedDates = [] }: BookingFormProps) {
         <Card className="sticky top-24 shadow-lg border-muted">
             <CardHeader>
                 <CardTitle className="flex justify-between items-center">
-                    <span>${property.price} <span className="text-sm font-normal text-muted-foreground">/ night</span></span>
+                    <span>₹{property.price} <span className="text-sm font-normal text-muted-foreground">/ night</span></span>
                     <span className="text-sm font-normal text-muted-foreground">★ {property.rating}</span>
                 </CardTitle>
             </CardHeader>

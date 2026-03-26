@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Property } from "@/lib/data";
+import { Property } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { X, Plus, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface PropertyFormProps {
     initialData?: Property;
@@ -97,7 +98,7 @@ export function PropertyForm({ initialData, onSubmit, onCancel }: PropertyFormPr
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label>Price (₹ per night)</Label>
+                    <Label>Price (per night)</Label>
                     <div className="relative">
                         <span className="absolute left-3 top-2.5 text-muted-foreground">₹</span>
                         <Input name="price" type="number" defaultValue={initialData?.price} required className="pl-7" placeholder="4500" />
@@ -139,19 +140,32 @@ export function PropertyForm({ initialData, onSubmit, onCancel }: PropertyFormPr
 
                                 setUploadingFiles(prev => [...prev, ...newUploadingFiles]);
 
-                                const formData = new FormData();
-                                selectedFiles.forEach(file => {
-                                    formData.append('file', file);
-                                });
+                                const supabase = createSupabaseBrowserClient();
+                                const uploadedUrls: string[] = [];
 
                                 try {
-                                    const res = await fetch('/api/upload', {
-                                        method: 'POST',
-                                        body: formData
-                                    });
-                                    if (res.ok) {
-                                        const { urls } = await res.json();
-                                        setImages(prev => [...prev, ...urls]);
+                                    for (const file of selectedFiles) {
+                                        const fileExt = file.name.split('.').pop();
+                                        const filePath = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+
+                                        const { error: uploadError } = await supabase.storage
+                                            .from('property')
+                                            .upload(filePath, file);
+
+                                        if (uploadError) {
+                                            console.error('Upload error:', uploadError);
+                                            continue;
+                                        }
+
+                                        const { data: publicUrlData } = supabase.storage
+                                            .from('property')
+                                            .getPublicUrl(filePath);
+
+                                        uploadedUrls.push(publicUrlData.publicUrl);
+                                    }
+
+                                    if (uploadedUrls.length > 0) {
+                                        setImages(prev => [...prev, ...uploadedUrls]);
                                     } else {
                                         alert("Upload failed.");
                                     }

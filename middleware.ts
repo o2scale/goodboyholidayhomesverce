@@ -50,7 +50,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (isDashboardRoute && role !== 'customer') {
-    return NextResponse.redirect(new URL('/', request.url));
+    // Admin hitting /dashboard goes to their own /admin area instead of homepage
+    const fallback = role === 'admin' ? '/admin' : '/';
+    return NextResponse.redirect(new URL(fallback, request.url));
   }
 
   return supabaseResponse;

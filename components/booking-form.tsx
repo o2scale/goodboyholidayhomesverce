@@ -95,7 +95,9 @@ export function BookingForm({ property, blockedDates = [] }: BookingFormProps) {
             <CardHeader>
                 <CardTitle className="flex justify-between items-center">
                     <span>₹{property.price} <span className="text-sm font-normal text-muted-foreground">/ night</span></span>
-                    <span className="text-sm font-normal text-muted-foreground">★ {property.rating}</span>
+                    {property.rating > 0 && (
+                        <span className="text-sm font-normal text-muted-foreground">★ {property.rating}</span>
+                    )}
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

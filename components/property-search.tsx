@@ -1,7 +1,8 @@
 "use client";
 
-import { Search, Calendar } from "lucide-react";
+import { Search, Calendar, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useState } from "react";
@@ -11,41 +12,68 @@ import { DateRange } from "react-day-picker";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface PropertySearchProps {
+    defaultLocation?: string;
     defaultStartDate?: string;
     defaultEndDate?: string;
 }
 
 export function PropertySearch({
+    defaultLocation,
     defaultStartDate,
-    defaultEndDate
+    defaultEndDate,
 }: PropertySearchProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    const [location, setLocation] = useState(defaultLocation ?? "");
+
     // Initialize state from props
     const [date, setDate] = useState<DateRange | undefined>(
-        defaultStartDate && defaultEndDate ? {
-            from: new Date(defaultStartDate),
-            to: new Date(defaultEndDate)
-        } : defaultStartDate ? {
-            from: new Date(defaultStartDate),
-            to: undefined
-        } : undefined
+        defaultStartDate && defaultEndDate
+            ? { from: new Date(defaultStartDate), to: new Date(defaultEndDate) }
+            : defaultStartDate
+                ? { from: new Date(defaultStartDate), to: undefined }
+                : undefined
     );
 
     const handleSearch = () => {
         const params = new URLSearchParams(searchParams.toString());
-        if (date?.from) params.set("startDate", date.from.toISOString());
+
+        if (location.trim()) params.set("location", location.trim());
+        else params.delete("location");
+
+        // Use yyyy-MM-dd to avoid UTC timezone shift on DATE columns
+        if (date?.from) params.set("startDate", format(date.from, "yyyy-MM-dd"));
         else params.delete("startDate");
 
-        if (date?.to) params.set("endDate", date.to.toISOString());
+        if (date?.to) params.set("endDate", format(date.to, "yyyy-MM-dd"));
         else params.delete("endDate");
 
         router.push(`/properties?${params.toString()}`);
     };
 
     return (
-        <div className="bg-card border rounded-2xl p-2 shadow-sm flex flex-col md:flex-row items-center gap-2 mb-8 max-w-2xl mx-auto">
+        <div className="bg-card border rounded-2xl p-2 shadow-sm flex flex-col md:flex-row items-center gap-2 mb-8 max-w-3xl mx-auto">
+            {/* Location */}
+            <div className="flex-1 w-full px-4 py-2 md:py-0 md:border-r">
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-xs font-semibold uppercase tracking-wider">Location</span>
+                </div>
+                <Input
+                    placeholder="Kerala, Ooty, Munnar..."
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleSearch();
+                        }
+                    }}
+                    className="border-0 shadow-none p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                />
+            </div>
+
             {/* Dates */}
             <div className="flex-1 w-full px-4 py-2 md:py-0">
                 <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -83,6 +111,7 @@ export function PropertySearch({
                             selected={date}
                             onSelect={setDate}
                             numberOfMonths={2}
+                            disabled={{ before: new Date() }}
                         />
                     </PopoverContent>
                 </Popover>
@@ -91,7 +120,7 @@ export function PropertySearch({
             {/* Search Button */}
             <Button size="lg" className="rounded-xl w-full md:w-auto px-8 h-12 text-lg" onClick={handleSearch}>
                 <Search className="w-5 h-5 mr-2" />
-                Update
+                Search
             </Button>
         </div>
     );

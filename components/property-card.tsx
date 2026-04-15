@@ -21,12 +21,14 @@ export function PropertyCard({ property }: PropertyCardProps) {
                         className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                 </div>
-                <div className="absolute top-2 right-2">
-                    <Badge variant="secondary" className="backdrop-blur-md bg-background/80">
-                        <Star className="w-3 h-3 mr-1 fill-primary text-primary" />
-                        {property.rating}
-                    </Badge>
-                </div>
+                {property.rating > 0 && (
+                    <div className="absolute top-2 right-2">
+                        <Badge variant="secondary" className="backdrop-blur-md bg-background/80">
+                            <Star className="w-3 h-3 mr-1 fill-primary text-primary" />
+                            {property.rating}
+                        </Badge>
+                    </div>
+                )}
                 <CardContent className="p-4">
                     <div className="flex items-center text-muted-foreground text-sm mb-2">
                         <MapPin className="w-4 h-4 mr-1" />

@@ -61,11 +61,18 @@ export default function AdminPage() {
 
     const handleStatusUpdate = async (id: string, status: 'confirmed' | 'rejected') => {
         try {
-            await fetch(`/api/bookings/${id}`, {
+            const res = await fetch(`/api/bookings/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status }),
             });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || `Failed to ${status === 'confirmed' ? 'approve' : 'reject'} booking.`);
+                return;
+            }
+
             setBookings(prev => prev.map(b => b.id === id ? { ...b, status } : b));
         } catch (e) {
             alert("Failed to update status");
@@ -225,6 +232,7 @@ export default function AdminPage() {
                                         selected={blockDate}
                                         onSelect={setBlockDate}
                                         numberOfMonths={1}
+                                        disabled={{ before: new Date() }}
                                     />
                                 </div>
                             </div>

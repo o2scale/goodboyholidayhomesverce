@@ -134,7 +134,7 @@ export function BookingForm({ property, blockedDates = [] }: BookingFormProps) {
                                 selected={date}
                                 onSelect={setDate}
                                 numberOfMonths={2}
-                                disabled={blockedDates}
+                                disabled={[{ before: new Date() }, ...blockedDates]}
                             />
                         </PopoverContent>
                     </Popover>

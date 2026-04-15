@@ -51,6 +51,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Customer phone required' }, { status: 400 });
     }
 
+    // Reject past dates on customer bookings (admin blocks can be any date for maintenance scheduling)
+    if (!isBlock) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
+      }
+      if (start < today) {
+        return NextResponse.json({ error: 'Check-in date cannot be in the past' }, { status: 400 });
+      }
+      if (end < start) {
+        return NextResponse.json({ error: 'Check-out must be on or after check-in' }, { status: 400 });
+      }
+    }
+
     const supabase = await createSupabaseServerClient();
 
     // Try to get the current user for user_id (optional — anonymous bookings allowed)

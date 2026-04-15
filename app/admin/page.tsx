@@ -79,6 +79,21 @@ export default function AdminPage() {
         }
     };
 
+    const handleDeleteBlock = async (id: string) => {
+        if (!confirm("Unblock these dates? This will make them bookable again.")) return;
+        try {
+            const res = await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || "Failed to unblock dates.");
+                return;
+            }
+            setBookings(prev => prev.filter(b => b.id !== id));
+        } catch {
+            alert("Failed to unblock dates.");
+        }
+    };
+
     const handleCreateBlock = async () => {
         if (!selectedProperty || !blockDate?.from || !blockDate?.to) {
             alert("Please select a property and date range.");
@@ -206,7 +221,7 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="block-dates">
+                <TabsContent value="block-dates" className="space-y-8">
                     <div className="max-w-xl mx-auto border rounded-xl p-6 bg-card">
                         <h2 className="text-xl font-semibold mb-6">Block Dates Manually</h2>
                         <div className="space-y-4">
@@ -253,6 +268,73 @@ export default function AdminPage() {
                             </Button>
                         </div>
                     </div>
+
+                    {/* Existing blocked dates */}
+                    {(() => {
+                        const blocked = bookings.filter(b => b.status === 'blocked');
+                        return (
+                            <div className="max-w-4xl mx-auto">
+                                <div className="bg-card border rounded-xl p-6 shadow-sm">
+                                    <div className="mb-4 flex items-center justify-between">
+                                        <div>
+                                            <h2 className="text-xl font-semibold">Existing Blocked Dates</h2>
+                                            <p className="text-sm text-muted-foreground">All manual date blocks across your properties</p>
+                                        </div>
+                                        <Badge variant="secondary">{blocked.length} total</Badge>
+                                    </div>
+
+                                    <div className="rounded-md border">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Property</TableHead>
+                                                    <TableHead>Dates</TableHead>
+                                                    <TableHead>Nights</TableHead>
+                                                    <TableHead>Reason</TableHead>
+                                                    <TableHead className="text-right">Actions</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {blocked.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                                            No blocked dates yet
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    blocked.map(b => {
+                                                        const property = properties.find(p => p.id === b.propertyId);
+                                                        const start = new Date(b.startDate);
+                                                        const end = new Date(b.endDate);
+                                                        const nights = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                                                        return (
+                                                            <TableRow key={b.id}>
+                                                                <TableCell className="font-medium max-w-[180px] truncate" title={property?.title || b.propertyId}>
+                                                                    {property?.title || b.propertyId}
+                                                                </TableCell>
+                                                                <TableCell className="text-sm">
+                                                                    {format(start, "MMM d, yyyy")} — {format(end, "MMM d, yyyy")}
+                                                                </TableCell>
+                                                                <TableCell className="text-sm">{nights}</TableCell>
+                                                                <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={b.customerName}>
+                                                                    {b.customerName}
+                                                                </TableCell>
+                                                                <TableCell className="text-right">
+                                                                    <Button size="sm" variant="destructive" onClick={() => handleDeleteBlock(b.id)}>
+                                                                        Unblock
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </TabsContent>
 
                 <TabsContent value="properties">

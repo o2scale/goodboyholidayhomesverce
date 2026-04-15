@@ -1,5 +1,37 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+
+async function requireAdmin(): Promise<boolean> {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    return user.user_metadata?.role === 'admin';
+}
+
+export async function DELETE(
+    _request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    if (!await requireAdmin()) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        const { id } = await params;
+        const admin = getSupabaseAdmin();
+        const { error } = await admin.from('bookings').delete().eq('id', id);
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Failed to delete booking';
+        return NextResponse.json({ error: message }, { status: 500 });
+    }
+}
 
 export async function PATCH(
     request: Request,

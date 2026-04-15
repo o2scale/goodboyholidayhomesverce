@@ -14,6 +14,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
+
+// Format a Date as YYYY-MM-DD using local timezone (avoids UTC shift for DB date columns)
+const toLocalDateString = (d: Date) => format(d, "yyyy-MM-dd");
 import { PropertyForm } from "@/components/admin/property-form";
 import { Plus, Check, X, Loader2, Image as ImageIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -82,29 +85,29 @@ export default function AdminPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     propertyId: selectedProperty,
-                    startDate: blockDate.from.toISOString(),
-                    endDate: blockDate.to.toISOString(),
+                    startDate: toLocalDateString(blockDate.from),
+                    endDate: toLocalDateString(blockDate.to),
                     guestCount: 0,
                     customerName: blockReason,
-                    customerEmail: "admin@goodboy.com"
+                    customerEmail: "admin@goodboy.com",
+                    status: "blocked",
                 }),
             });
 
             if (res.ok) {
-                const newBooking = await res.json();
-                // Auto-confirm valid admin blocks if needed, but the API creates them as pending.
-                // Let's manually confirm it immediately to ensure it blocks calendar.
-                await handleStatusUpdate(newBooking.id, 'confirmed');
-
                 // Refresh bookings
                 const updatedBookingsRes = await fetch('/api/bookings');
-                setBookings(await updatedBookingsRes.json());
+                const updated = await updatedBookingsRes.json();
+                setBookings(Array.isArray(updated) ? updated : []);
 
                 // Reset form
                 setBlockDate(undefined);
                 setBlockReason("Admin Block");
                 setSelectedProperty("");
                 alert("Dates blocked successfully.");
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert(`Failed to block dates: ${err.error || "Unknown error"}`);
             }
         } catch (e) {
             alert("Failed to block dates.");
@@ -361,11 +364,18 @@ function UserManagement() {
     const [users, setUsers] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(true);
 
     const fetchUsers = async () => {
-        const res = await fetch('/api/users');
-        if (res.ok) {
-            setUsers(await res.json());
+        setIsLoadingUsers(true);
+        try {
+            const res = await fetch('/api/users');
+            if (res.ok) {
+                const data = await res.json();
+                setUsers(Array.isArray(data) ? data : []);
+            }
+        } finally {
+            setIsLoadingUsers(false);
         }
     };
 
@@ -423,7 +433,22 @@ function UserManagement() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {users.map(user => (
+                                {isLoadingUsers ? (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center py-8">
+                                            <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Loading users...
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : users.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                            No users found
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (users.map(user => (
                                     <TableRow key={user.id}>
                                         <TableCell className="font-medium">{user.name}</TableCell>
                                         <TableCell>{user.email}</TableCell>
@@ -437,7 +462,7 @@ function UserManagement() {
                                             <Button size="sm" variant="destructive" onClick={() => handleDelete(user.id)}>Delete</Button>
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                )))}
                             </TableBody>
                         </Table>
                     </div>

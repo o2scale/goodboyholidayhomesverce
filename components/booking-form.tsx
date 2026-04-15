@@ -68,8 +68,8 @@ export function BookingForm({ property, blockedDates = [] }: BookingFormProps) {
                 },
                 body: JSON.stringify({
                     propertyId: property.id,
-                    startDate: date.from.toISOString(),
-                    endDate: date.to.toISOString(),
+                    startDate: format(date.from, "yyyy-MM-dd"),
+                    endDate: format(date.to, "yyyy-MM-dd"),
                     guestCount: guests,
                     customerName: name,
                     customerEmail: email,

@@ -39,21 +39,41 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { propertyId, startDate, endDate, guestCount, customerName, customerEmail, customerPhone, includeMeals } = body;
+    const { propertyId, startDate, endDate, guestCount, customerName, customerEmail, customerPhone, includeMeals, status } = body;
 
-    if (!propertyId || !startDate || !endDate || !customerName || !customerPhone) {
+    // Admin blocked-date bookings don't need customer contact — treat them as internal
+    const isBlock = status === 'blocked';
+
+    if (!propertyId || !startDate || !endDate || !customerName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    if (!isBlock && !customerPhone) {
+      return NextResponse.json({ error: 'Customer phone required' }, { status: 400 });
     }
 
     const supabase = await createSupabaseServerClient();
 
     // Try to get the current user for user_id (optional — anonymous bookings allowed)
     let userId: string | null = null;
+    let userRole: string | null = null;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       userId = user?.id ?? null;
+      userRole = (user?.user_metadata?.role as string) ?? null;
     } catch {
       // No authenticated user — that is fine
+    }
+
+    // Only admins may create non-pending bookings (e.g. 'blocked' date ranges)
+    let finalStatus: 'pending' | 'blocked' | 'confirmed' | 'rejected' = 'pending';
+    if (status && status !== 'pending') {
+      if (userRole !== 'admin') {
+        return NextResponse.json({ error: 'Only admins can set a booking status' }, { status: 403 });
+      }
+      if (!['pending', 'blocked', 'confirmed', 'rejected'].includes(status)) {
+        return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
+      }
+      finalStatus = status;
     }
 
     // Use admin client for insert to bypass RLS (anonymous bookings must be allowed)
@@ -65,12 +85,12 @@ export async function POST(request: Request) {
         user_id: userId,
         start_date: startDate,
         end_date: endDate,
-        guest_count: guestCount,
+        guest_count: guestCount ?? 1,
         customer_name: customerName,
         customer_email: customerEmail || '',
-        customer_phone: customerPhone,
+        customer_phone: customerPhone || null,
         include_meals: includeMeals ?? false,
-        status: 'pending',
+        status: finalStatus,
       })
       .select()
       .single();
@@ -81,6 +101,8 @@ export async function POST(request: Request) {
 
     const booking = toBooking(data);
 
+    // Skip email for admin blocked-date bookings — only send for real customer requests
+    if (finalStatus === 'pending') {
     // Send Email Notification (inner try/catch — must not fail parent request)
     try {
       const transporter = nodemailer.createTransport({
@@ -121,6 +143,7 @@ export async function POST(request: Request) {
       console.error('Failed to send email notification:', emailError);
       // Don't fail the request, just log the error
     }
+    } // end if finalStatus === 'pending'
 
     return NextResponse.json(booking, { status: 201 });
   } catch {

@@ -32,7 +32,7 @@ export async function PATCH(
                 p_property_id: booking.property_id,
                 p_start_date: booking.start_date,
                 p_end_date: booking.end_date,
-                p_exclude_booking_id: id,
+                p_exclude_id: id,
             });
 
             if (rpcError) {

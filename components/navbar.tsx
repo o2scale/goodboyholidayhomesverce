@@ -43,8 +43,8 @@ export function Navbar({ user }: NavbarProps) {
 
     const handleLogout = async () => {
         await fetch("/api/auth/logout", { method: "POST" });
-        router.refresh();
-        router.push("/");
+        // Hard reload to clear all React client state and RSC cache
+        window.location.href = "/";
     };
 
     return (

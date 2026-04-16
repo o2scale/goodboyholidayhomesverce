@@ -6,7 +6,11 @@ export async function POST(request: Request) {
     const { name, email, password, phone } = await request.json();
 
     if (!name || !email || !password) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+      return NextResponse.json({ error: 'Name, email, and password are required.' }, { status: 400 });
+    }
+
+    if (password.length < 6) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
     }
 
     const supabase = await createSupabaseServerClient();
@@ -19,10 +23,12 @@ export async function POST(request: Request) {
     });
 
     if (error || !data.user) {
-      return NextResponse.json(
-        { error: error?.message ?? 'Registration failed' },
-        { status: 400 }
-      );
+      // Friendlier message for the most common Supabase error
+      const msg = error?.message ?? 'Registration failed';
+      const friendly = /already registered|already exists/i.test(msg)
+        ? 'An account with this email already exists. Try signing in instead.'
+        : msg;
+      return NextResponse.json({ error: friendly }, { status: 400 });
     }
 
     if (phone) {

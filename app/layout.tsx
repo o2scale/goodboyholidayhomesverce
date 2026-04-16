@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { FloatingContact } from "@/components/floating-contact";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -57,6 +58,7 @@ export default async function RootLayout({
           {children}
         </main>
         <Footer />
+        <FloatingContact />
       </body>
     </html>
   );

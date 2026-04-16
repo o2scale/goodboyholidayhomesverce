@@ -3,10 +3,10 @@ export const siteConfig = {
   contact: {
     // Phone number in international format without spaces/dashes for tel: and wa.me links.
     // Update this single value to change it across the whole site (footer, contact page, floating buttons).
-    phoneE164: "+919876543210",
+    phoneE164: "+919880060099",
     // Display version (how it shows in UI)
-    phoneDisplay: "+91 98765 43210",
-    email: "hello@goodboyholidayhomes.com",
+    phoneDisplay: "+91 98800 60099",
+    email: "goodboyholidayhomes@gmail.com",
     address: "123 Goodboy Lane, Pawsome City, PC 56789",
   },
 } as const;

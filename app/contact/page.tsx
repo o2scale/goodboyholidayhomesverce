@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Mail, Phone, Loader2 } from "lucide-react";
+import { Mail, Phone, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { siteConfig } from "@/lib/site-config";
 
 export default function ContactPage() {
     const [firstName, setFirstName] = useState("");
@@ -74,24 +75,27 @@ export default function ContactPage() {
 
                     <div className="space-y-6">
                         <div className="flex items-start gap-4">
-                            <MapPin className="w-6 h-6 text-primary mt-1" />
-                            <div>
-                                <h4 className="font-semibold">Visit Us</h4>
-                                <p className="text-muted-foreground">123 Goodboy Lane, Pawsome City, PC 56789</p>
-                            </div>
-                        </div>
-                        <div className="flex items-start gap-4">
                             <Mail className="w-6 h-6 text-primary mt-1" />
                             <div>
                                 <h4 className="font-semibold">Email Us</h4>
-                                <p className="text-muted-foreground">hello@goodboyholidayhomes.com</p>
+                                <a
+                                    href={`mailto:${siteConfig.contact.email}`}
+                                    className="text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                    {siteConfig.contact.email}
+                                </a>
                             </div>
                         </div>
                         <div className="flex items-start gap-4">
                             <Phone className="w-6 h-6 text-primary mt-1" />
                             <div>
                                 <h4 className="font-semibold">Call Us</h4>
-                                <p className="text-muted-foreground">+91 98765 43210</p>
+                                <a
+                                    href={`tel:${siteConfig.contact.phoneE164}`}
+                                    className="text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                    {siteConfig.contact.phoneDisplay}
+                                </a>
                             </div>
                         </div>
                     </div>

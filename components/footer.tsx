@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Facebook, Twitter, Instagram, Mail, Phone, MapPin } from "lucide-react";
+import { Facebook, Twitter, Instagram, Mail, Phone } from "lucide-react";
+import { siteConfig } from "@/lib/site-config";
 
 export function Footer() {
     return (
@@ -46,16 +47,22 @@ export function Footer() {
                         <h4 className="font-semibold text-foreground">Contact</h4>
                         <ul className="space-y-2 text-sm text-muted-foreground">
                             <li className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-primary" />
-                                <span>123 Scenic Drive, Hilltop City</span>
-                            </li>
-                            <li className="flex items-center gap-2">
                                 <Phone className="w-4 h-4 text-primary" />
-                                <span>+91 98765 43210</span>
+                                <a
+                                    href={`tel:${siteConfig.contact.phoneE164}`}
+                                    className="hover:text-primary transition-colors"
+                                >
+                                    {siteConfig.contact.phoneDisplay}
+                                </a>
                             </li>
                             <li className="flex items-center gap-2">
                                 <Mail className="w-4 h-4 text-primary" />
-                                <span>hello@goodboyholidayhomes.com</span>
+                                <a
+                                    href={`mailto:${siteConfig.contact.email}`}
+                                    className="hover:text-primary transition-colors break-all"
+                                >
+                                    {siteConfig.contact.email}
+                                </a>
                             </li>
                         </ul>
                     </div>

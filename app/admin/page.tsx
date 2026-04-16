@@ -94,6 +94,24 @@ export default function AdminPage() {
         }
     };
 
+    const handleDeleteBooking = async (id: string, currentStatus: string) => {
+        const msg = currentStatus === 'confirmed'
+            ? "Cancel this confirmed booking? The dates will become available again. This cannot be undone."
+            : "Remove this booking from the list? This cannot be undone.";
+        if (!confirm(msg)) return;
+        try {
+            const res = await fetch(`/api/bookings/${id}`, { method: 'DELETE' });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                alert(err.error || "Failed to remove booking.");
+                return;
+            }
+            setBookings(prev => prev.filter(b => b.id !== id));
+        } catch {
+            alert("Failed to remove booking.");
+        }
+    };
+
     const handleCreateBlock = async () => {
         if (!selectedProperty || !blockDate?.from || !blockDate?.to) {
             alert("Please select a property and date range.");
@@ -201,16 +219,21 @@ export default function AdminPage() {
                                                         {booking.status}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="text-right space-x-2">
+                                                <TableCell className="text-right space-x-2 whitespace-nowrap">
                                                     {booking.status === 'pending' && (
                                                         <>
-                                                            <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(booking.id, 'confirmed')}>
+                                                            <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(booking.id, 'confirmed')} title="Approve">
                                                                 <Check className="w-4 h-4 text-green-600" />
                                                             </Button>
-                                                            <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(booking.id, 'rejected')}>
+                                                            <Button size="sm" variant="outline" onClick={() => handleStatusUpdate(booking.id, 'rejected')} title="Reject">
                                                                 <X className="w-4 h-4 text-red-600" />
                                                             </Button>
                                                         </>
+                                                    )}
+                                                    {(booking.status === 'confirmed' || booking.status === 'rejected') && (
+                                                        <Button size="sm" variant="destructive" onClick={() => handleDeleteBooking(booking.id, booking.status)} title="Cancel and remove this booking">
+                                                            Cancel
+                                                        </Button>
                                                     )}
                                                 </TableCell>
                                             </TableRow>
@@ -369,7 +392,7 @@ export default function AdminPage() {
                                                     <h3 className="text-lg font-bold">{p.title}</h3>
                                                     <div className="text-sm text-muted-foreground flex items-center mt-1">
                                                         <span className="mr-3">📍 {p.location}</span>
-                                                        <span>★ {p.rating}</span>
+                                                        {p.rating > 0 && <span>★ {p.rating}</span>}
                                                     </div>
                                                     <div className="mt-2 flex gap-2">
                                                         {p.amenities.slice(0, 3).map(a => (
@@ -700,11 +723,13 @@ function ContactMessages() {
                                                 onClick={() => setExpandedId(isExpanded ? null : m.id)}
                                                 className="text-left w-full"
                                             >
-                                                <div className={isExpanded ? "whitespace-pre-wrap text-sm" : "truncate text-sm"}>
+                                                <div className={isExpanded ? "whitespace-pre-wrap text-sm" : "text-sm line-clamp-2"}>
                                                     {m.message}
                                                 </div>
-                                                {!isExpanded && m.message.length > 60 && (
-                                                    <span className="text-xs text-primary hover:underline">Show more</span>
+                                                {m.message.length > 80 && (
+                                                    <span className="text-xs text-primary hover:underline">
+                                                        {isExpanded ? "Show less" : "Show more"}
+                                                    </span>
                                                 )}
                                             </button>
                                         </TableCell>

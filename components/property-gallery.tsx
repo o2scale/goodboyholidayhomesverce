@@ -31,6 +31,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                             src={images[selectedIndex]}
                             alt={`${title} view ${selectedIndex + 1}`}
                             fill
+                            sizes="(min-width: 1024px) 70vw, 100vw"
                             className="object-cover"
                             priority={selectedIndex === 0}
                         />
@@ -82,6 +83,7 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
                                 src={img}
                                 alt={`Thumbnail ${i + 1}`}
                                 fill
+                                sizes="128px"
                                 className="object-cover"
                             />
                         </button>

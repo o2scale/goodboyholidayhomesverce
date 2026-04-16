@@ -54,7 +54,8 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <Navbar user={navUser} />
-        <main className="flex-1">
+        {/* pb-24 on mobile leaves room for the bottom-right floating contact buttons so they don't cover content */}
+        <main className="flex-1 pb-24 md:pb-0">
           {children}
         </main>
         <Footer />

@@ -57,6 +57,7 @@ export function Navbar({ user }: NavbarProps) {
                             src="/logo.jpeg"
                             alt="Goodboy Holiday Homes"
                             fill
+                            sizes="40px"
                             className="object-cover"
                         />
                     </div>

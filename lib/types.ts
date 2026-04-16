@@ -31,3 +31,14 @@ export interface Profile {
   phone?: string | null;
   role: 'admin' | 'customer';
 }
+
+export interface ContactMessage {
+  id: string;
+  firstName: string;
+  lastName?: string | null;
+  email: string;
+  phone?: string | null;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}

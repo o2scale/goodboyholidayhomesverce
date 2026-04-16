@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Booking, Property } from "@/lib/types";
+import { Booking, Property, ContactMessage } from "@/lib/types";
 import {
     Table,
     TableBody,
@@ -151,6 +151,7 @@ export default function AdminPage() {
                     <TabsTrigger value="bookings">Bookings</TabsTrigger>
                     <TabsTrigger value="block-dates">Block Dates</TabsTrigger>
                     <TabsTrigger value="properties">Properties</TabsTrigger>
+                    <TabsTrigger value="messages">Messages</TabsTrigger>
                     <TabsTrigger value="users">Users</TabsTrigger>
                 </TabsList>
 
@@ -442,6 +443,10 @@ export default function AdminPage() {
                     </div>
                 </TabsContent>
 
+                <TabsContent value="messages">
+                    <ContactMessages />
+                </TabsContent>
+
                 <TabsContent value="users">
                     <UserManagement />
                 </TabsContent>
@@ -572,6 +577,161 @@ function UserManagement() {
                     />
                 </div>
             )}
+        </div>
+    );
+}
+
+function ContactMessages() {
+    const [messages, setMessages] = useState<ContactMessage[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    const fetchMessages = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch('/api/contact');
+            if (res.ok) {
+                const data = await res.json();
+                setMessages(Array.isArray(data) ? data : []);
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchMessages();
+    }, []);
+
+    const markRead = async (id: string, isRead: boolean) => {
+        const res = await fetch(`/api/contact/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isRead }),
+        });
+        if (res.ok) {
+            setMessages(prev => prev.map(m => m.id === id ? { ...m, isRead } : m));
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Delete this message? This cannot be undone.")) return;
+        const res = await fetch(`/api/contact/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            setMessages(prev => prev.filter(m => m.id !== id));
+            if (expandedId === id) setExpandedId(null);
+        }
+    };
+
+    const unreadCount = messages.filter(m => !m.isRead).length;
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between bg-card p-6 rounded-xl border shadow-sm">
+                <div>
+                    <h2 className="text-2xl font-bold">Contact Messages</h2>
+                    <p className="text-muted-foreground">Enquiries submitted through the contact form</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                        <Badge variant="default">{unreadCount} unread</Badge>
+                    )}
+                    <Badge variant="secondary">{messages.length} total</Badge>
+                </div>
+            </div>
+
+            <div className="rounded-md border bg-card">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>From</TableHead>
+                            <TableHead>Contact</TableHead>
+                            <TableHead>Message</TableHead>
+                            <TableHead>Received</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center py-8">
+                                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Loading messages...
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ) : messages.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                    No messages yet
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            messages.map(m => {
+                                const isExpanded = expandedId === m.id;
+                                return (
+                                    <TableRow
+                                        key={m.id}
+                                        className={!m.isRead ? "bg-primary/5" : ""}
+                                    >
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                {!m.isRead && <span className="h-2 w-2 rounded-full bg-primary shrink-0" aria-label="Unread" />}
+                                                <div>
+                                                    <div className="font-medium">
+                                                        {m.firstName}{m.lastName ? ` ${m.lastName}` : ""}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-sm">
+                                            <a href={`mailto:${m.email}`} className="text-primary hover:underline block">
+                                                {m.email}
+                                            </a>
+                                            {m.phone && (
+                                                <a href={`tel:${m.phone}`} className="text-muted-foreground hover:text-primary text-xs block">
+                                                    {m.phone}
+                                                </a>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="max-w-md">
+                                            <button
+                                                onClick={() => setExpandedId(isExpanded ? null : m.id)}
+                                                className="text-left w-full"
+                                            >
+                                                <div className={isExpanded ? "whitespace-pre-wrap text-sm" : "truncate text-sm"}>
+                                                    {m.message}
+                                                </div>
+                                                {!isExpanded && m.message.length > 60 && (
+                                                    <span className="text-xs text-primary hover:underline">Show more</span>
+                                                )}
+                                            </button>
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                                            {format(new Date(m.createdAt), "MMM d, yyyy")}
+                                            <div className="text-xs">{format(new Date(m.createdAt), "h:mm a")}</div>
+                                        </TableCell>
+                                        <TableCell className="text-right space-x-1 whitespace-nowrap">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => markRead(m.id, !m.isRead)}
+                                                title={m.isRead ? "Mark as unread" : "Mark as read"}
+                                            >
+                                                {m.isRead ? "Unread" : "Mark read"}
+                                            </Button>
+                                            <Button size="sm" variant="destructive" onClick={() => handleDelete(m.id)}>
+                                                Delete
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
     );
 }

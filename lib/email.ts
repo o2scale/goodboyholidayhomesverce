@@ -1,69 +1,154 @@
+import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 
 /**
- * Shared nodemailer transporter for Gmail SMTP.
+ * Email sending — two-track strategy:
  *
- * Uses explicit host/port/secure settings instead of `service: 'gmail'`
- * shorthand because some serverless environments (Vercel/Fly/AWS Lambda)
- * have flaky behavior with the shorthand — explicit STARTTLS on 587 is
- * the most compatible setup.
+ * Primary: Resend (HTTP API)
+ *   - Works on Vercel serverless without SMTP headaches.
+ *   - Uses RESEND_API_KEY env var.
+ *   - Without a verified domain on Resend, the 'from' address must be
+ *     the `onboarding@resend.dev` default, and sends are only allowed
+ *     to the Resend account owner's email. Verify a custom domain to
+ *     send from goodboyholidayhomes.com and to any recipient.
  *
- * Requires EMAIL_PASSWORD env var (Gmail App Password, 16 chars).
+ * Fallback: Gmail SMTP (nodemailer)
+ *   - Used if RESEND_API_KEY is not configured.
+ *   - Known to be unreliable on Vercel serverless.
+ *
+ * Either way, failures never throw — they log and return false so the
+ * parent request (booking / contact form save) succeeds regardless.
  */
-export function createEmailTransporter() {
-  return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // STARTTLS upgrade (not implicit TLS on 465)
-    auth: {
-      user: 'goodboyholidayhomes@gmail.com',
-      pass: process.env.EMAIL_PASSWORD,
-    },
-  });
+
+const RECIPIENT = 'goodboyholidayhomes@gmail.com';
+
+interface EmailOptions {
+    to?: string;
+    subject: string;
+    html: string;
+    text?: string;
+    replyTo?: string;
+    fromName?: string;
+}
+
+let _resend: Resend | null = null;
+function getResend(): Resend | null {
+    if (!process.env.RESEND_API_KEY) return null;
+    if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+    return _resend;
+}
+
+async function sendViaResend(opts: EmailOptions): Promise<boolean> {
+    const resend = getResend();
+    if (!resend) return false;
+
+    const fromName = opts.fromName ?? 'Goodboy Holiday Homes';
+    // Resend default sender — works without domain verification
+    const from = `${fromName} <onboarding@resend.dev>`;
+
+    try {
+        const { data, error } = await resend.emails.send({
+            from,
+            to: opts.to ?? RECIPIENT,
+            replyTo: opts.replyTo,
+            subject: opts.subject,
+            html: opts.html,
+            text: opts.text,
+        });
+
+        if (error) {
+            console.error('[email] RESEND FAILED', {
+                to: opts.to ?? RECIPIENT,
+                subject: opts.subject,
+                error,
+            });
+            return false;
+        }
+
+        console.log('[email] resend sent', { to: opts.to ?? RECIPIENT, subject: opts.subject, id: data?.id });
+        return true;
+    } catch (e) {
+        const err = e as Error;
+        console.error('[email] RESEND THREW', { message: err.message });
+        return false;
+    }
+}
+
+async function sendViaSmtp(opts: EmailOptions): Promise<boolean> {
+    if (!process.env.EMAIL_PASSWORD) {
+        console.error('[email] no RESEND_API_KEY and no EMAIL_PASSWORD — email not sent');
+        return false;
+    }
+
+    try {
+        const transporter = nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false,
+            auth: {
+                user: 'goodboyholidayhomes@gmail.com',
+                pass: process.env.EMAIL_PASSWORD,
+            },
+        });
+
+        const info = await transporter.sendMail({
+            from: `"${opts.fromName ?? 'Goodboy Holiday Homes'}" <goodboyholidayhomes@gmail.com>`,
+            to: opts.to ?? RECIPIENT,
+            replyTo: opts.replyTo,
+            subject: opts.subject,
+            html: opts.html,
+            text: opts.text,
+        });
+        console.log('[email] smtp sent', { to: opts.to ?? RECIPIENT, messageId: info.messageId });
+        return true;
+    } catch (e) {
+        const err = e as Error & { code?: string; response?: string; responseCode?: number };
+        console.error('[email] SMTP FAILED', {
+            to: opts.to ?? RECIPIENT,
+            subject: opts.subject,
+            code: err.code,
+            responseCode: err.responseCode,
+            response: err.response,
+            message: err.message,
+        });
+        return false;
+    }
 }
 
 /**
- * Send an email and log any failures verbosely to the server console
- * so they surface in Vercel / other deployment logs. Never throws —
- * returns true on success, false on failure. Callers can decide what
- * to do with the result; typically the parent request should NOT fail
- * just because the email failed.
+ * Send an email notification. Tries Resend first (HTTP, serverless-friendly),
+ * falls back to Gmail SMTP if Resend is not configured. Never throws.
  */
-export async function sendEmailNotification(options: {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-  replyTo?: string;
-  fromName?: string;
-}): Promise<boolean> {
-  if (!process.env.EMAIL_PASSWORD) {
-    console.error('[email] EMAIL_PASSWORD not set — skipping send to', options.to);
-    return false;
-  }
+export async function sendEmailNotification(opts: EmailOptions): Promise<boolean> {
+    if (process.env.RESEND_API_KEY) {
+        return sendViaResend(opts);
+    }
+    return sendViaSmtp(opts);
+}
 
-  try {
-    const transporter = createEmailTransporter();
-    const info = await transporter.sendMail({
-      from: `"${options.fromName ?? 'Goodboy Holiday Homes'}" <goodboyholidayhomes@gmail.com>`,
-      to: options.to,
-      replyTo: options.replyTo,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
+/**
+ * Diagnostic helper exposed to the /api/debug/email-check route.
+ * Reports which provider is configured and which env vars are set.
+ */
+export function getEmailConfigStatus() {
+    return {
+        primary: process.env.RESEND_API_KEY ? 'resend' : 'smtp',
+        hasResendKey: !!process.env.RESEND_API_KEY,
+        resendKeyLength: (process.env.RESEND_API_KEY ?? '').length,
+        hasSmtpPassword: !!process.env.EMAIL_PASSWORD,
+        smtpPasswordLength: (process.env.EMAIL_PASSWORD ?? '').length,
+    };
+}
+
+// Keep the old SMTP transporter helper for the existing diagnostic endpoint
+export function createEmailTransporter() {
+    return nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+            user: 'goodboyholidayhomes@gmail.com',
+            pass: process.env.EMAIL_PASSWORD,
+        },
     });
-    console.log('[email] sent', { to: options.to, subject: options.subject, messageId: info.messageId, accepted: info.accepted });
-    return true;
-  } catch (e) {
-    const err = e as Error & { code?: string; response?: string; responseCode?: number };
-    console.error('[email] SEND FAILED', {
-      to: options.to,
-      subject: options.subject,
-      code: err.code,
-      responseCode: err.responseCode,
-      response: err.response,
-      message: err.message,
-    });
-    return false;
-  }
 }

@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createEmailTransporter, sendEmailNotification } from '@/lib/email';
+import { sendEmailNotification, getEmailConfigStatus, createEmailTransporter } from '@/lib/email';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 /**
- * Diagnostic endpoint for email delivery. Admin-only.
- *
- *   GET  /api/debug/email-check   verifies SMTP config (no send)
- *   POST /api/debug/email-check   sends a test email to the admin inbox
- *
- * Returns detailed error info so we can diagnose production issues.
+ * Admin-only email diagnostic endpoint.
+ *   GET  /api/debug/email-check   reports which provider is configured
+ *   POST /api/debug/email-check   sends a test email
  */
 
 async function requireAdmin(): Promise<boolean> {
@@ -23,39 +20,34 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const hasPassword = !!process.env.EMAIL_PASSWORD;
-  const passwordLength = (process.env.EMAIL_PASSWORD ?? '').length;
+  const status = getEmailConfigStatus();
 
-  if (!hasPassword) {
-    return NextResponse.json({
-      ok: false,
-      reason: 'EMAIL_PASSWORD env var is not set on this deployment.',
-      env: { hasPassword, passwordLength },
-    });
-  }
-
-  try {
-    const t = createEmailTransporter();
-    await t.verify();
-    return NextResponse.json({
-      ok: true,
-      smtpVerified: true,
-      env: { hasPassword, passwordLength },
-    });
-  } catch (e) {
-    const err = e as Error & { code?: string; response?: string; responseCode?: number };
-    return NextResponse.json({
-      ok: false,
-      smtpVerified: false,
-      env: { hasPassword, passwordLength },
-      error: {
+  // If SMTP is the primary, also verify the connection (legacy check)
+  let smtpVerified: boolean | null = null;
+  let smtpError: unknown = null;
+  if (status.primary === 'smtp' && status.hasSmtpPassword) {
+    try {
+      const t = createEmailTransporter();
+      await t.verify();
+      smtpVerified = true;
+    } catch (e) {
+      smtpVerified = false;
+      const err = e as Error & { code?: string; response?: string; responseCode?: number };
+      smtpError = {
         code: err.code,
         responseCode: err.responseCode,
         response: err.response,
         message: err.message,
-      },
-    });
+      };
+    }
   }
+
+  return NextResponse.json({
+    provider: status.primary,
+    ...status,
+    smtpVerified,
+    smtpError,
+  });
 }
 
 export async function POST() {
@@ -63,17 +55,19 @@ export async function POST() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const status = getEmailConfigStatus();
   const sent = await sendEmailNotification({
     to: 'goodboyholidayhomes@gmail.com',
-    subject: 'Goodboy email diagnostic',
-    html: `<p>This is a diagnostic test email sent at ${new Date().toISOString()}.</p><p>If you received this, SMTP from production is working correctly.</p>`,
-    text: `Diagnostic test at ${new Date().toISOString()}. If you received this, SMTP from production is working.`,
+    subject: `Goodboy email diagnostic (${status.primary})`,
+    html: `<p>Diagnostic test email sent via <strong>${status.primary}</strong> at ${new Date().toISOString()}.</p><p>If you received this, the production email path is working.</p>`,
+    text: `Diagnostic test via ${status.primary} at ${new Date().toISOString()}. If you received this, production email is working.`,
   });
 
   return NextResponse.json({
     sent,
+    provider: status.primary,
     hint: sent
-      ? 'Email accepted by SMTP. Check your inbox (and spam folder).'
-      : 'Email send failed. Check Vercel runtime logs for [email] SEND FAILED entries.',
+      ? `Email accepted by ${status.primary}. Check inbox (and spam folder).`
+      : `Email failed. Check Vercel runtime logs for [email] ... entries.`,
   });
 }

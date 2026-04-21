@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import nodemailer from 'nodemailer';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { ContactMessage } from '@/lib/types';
 import { siteConfig } from '@/lib/site-config';
+import { sendEmailNotification } from '@/lib/email';
 
 function toMessage(row: Record<string, unknown>): ContactMessage {
   return {
@@ -76,35 +76,22 @@ export async function POST(request: Request) {
     }
 
     // Fire-and-forget email notification (must not fail the request)
-    try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: 'goodboyholidayhomes@gmail.com',
-          pass: process.env.EMAIL_PASSWORD,
-        },
-      });
-
-      await transporter.sendMail({
-        from: `"${siteConfig.name}" <goodboyholidayhomes@gmail.com>`,
-        to: siteConfig.contact.email,
-        replyTo: email,
-        subject: `Contact form: ${firstName}${lastName ? ' ' + lastName : ''}`,
-        html: `
-          <h2>New contact form submission</h2>
-          <p><strong>Name:</strong> ${firstName} ${lastName ?? ''}</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Phone:</strong> ${phone ?? '(not provided)'}</p>
-          <p><strong>Message:</strong></p>
-          <p>${String(message).replace(/\n/g, '<br/>')}</p>
-          <hr/>
-          <p style="color:#888;font-size:12px">Saved to admin dashboard at <a href="https://goodboyholidayhomes.com/admin">/admin → Messages</a></p>
-        `,
-      });
-    } catch (emailError) {
-      console.error('Failed to send contact email notification:', emailError);
-      // Don't fail the request — message is saved in DB regardless
-    }
+    await sendEmailNotification({
+      to: siteConfig.contact.email,
+      replyTo: email,
+      fromName: siteConfig.name,
+      subject: `Contact form: ${firstName}${lastName ? ' ' + lastName : ''}`,
+      html: `
+        <h2>New contact form submission</h2>
+        <p><strong>Name:</strong> ${firstName} ${lastName ?? ''}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone:</strong> ${phone ?? '(not provided)'}</p>
+        <p><strong>Message:</strong></p>
+        <p>${String(message).replace(/\n/g, '<br/>')}</p>
+        <hr/>
+        <p style="color:#888;font-size:12px">Saved to admin dashboard at <a href="https://goodboyholidayhomes.com/admin">/admin → Messages</a></p>
+      `,
+    });
 
     return NextResponse.json(toMessage(data), { status: 201 });
   } catch (e) {

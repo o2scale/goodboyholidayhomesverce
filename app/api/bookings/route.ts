@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import type { Booking } from '@/lib/types';
-import nodemailer from 'nodemailer';
+import { sendEmailNotification } from '@/lib/email';
 
 /* ── snake_case row → camelCase Booking ── */
 function toBooking(row: Record<string, unknown>): Booking {
@@ -141,31 +141,10 @@ export async function POST(request: Request) {
 
     // Skip email for admin blocked-date bookings — only send for real customer requests
     if (finalStatus === 'pending') {
-    // Send Email Notification (inner try/catch — must not fail parent request)
-    try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: 'goodboyholidayhomes@gmail.com',
-          pass: process.env.EMAIL_PASSWORD || 'your-app-password-here',
-        },
-      });
-
-      await transporter.sendMail({
-        from: '"Goodboy Holiday Homes" <goodboyholidayhomes@gmail.com>',
+      await sendEmailNotification({
         to: 'goodboyholidayhomes@gmail.com',
         subject: `New Booking Request: ${customerName}`,
-        text: `
-          New booking request received!
-
-          Property ID: ${propertyId}
-          Customer: ${customerName}
-          Phone: ${customerPhone}
-          Email: ${customerEmail}
-          Guests: ${guestCount}
-          Dates: ${startDate} to ${endDate}
-          Meals Included: ${includeMeals ? 'Yes' : 'No'}
-        `,
+        text: `New booking request received!\n\nProperty ID: ${propertyId}\nCustomer: ${customerName}\nPhone: ${customerPhone}\nEmail: ${customerEmail}\nGuests: ${guestCount}\nDates: ${startDate} to ${endDate}\nMeals Included: ${includeMeals ? 'Yes' : 'No'}`,
         html: `
           <h2>New Booking Request</h2>
           <p><strong>Property ID:</strong> ${propertyId}</p>
@@ -177,11 +156,7 @@ export async function POST(request: Request) {
           <p><strong>Meals Included:</strong> ${includeMeals ? 'Yes' : 'No'}</p>
         `,
       });
-    } catch (emailError) {
-      console.error('Failed to send email notification:', emailError);
-      // Don't fail the request, just log the error
     }
-    } // end if finalStatus === 'pending'
 
     return NextResponse.json(booking, { status: 201 });
   } catch {

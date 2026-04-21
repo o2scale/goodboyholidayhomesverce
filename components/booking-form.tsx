@@ -59,9 +59,8 @@ export function BookingForm({ property, blockedDates = [] }: BookingFormProps) {
         }
 
         setIsSubmitting(true);
-        // Simulate API call
         try {
-            await fetch('/api/bookings', {
+            const res = await fetch('/api/bookings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -77,13 +76,20 @@ export function BookingForm({ property, blockedDates = [] }: BookingFormProps) {
                     includeMeals,
                 }),
             });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                setMessage(err.error || "Something went wrong. Please try again.");
+                return;
+            }
+
             setMessage("Booking request sent! We will contact you shortly.");
             setDate(undefined);
             setName("");
             setEmail("");
             setPhone("");
             setIncludeMeals(false);
-        } catch (e) {
+        } catch {
             setMessage("Something went wrong. Please try again.");
         } finally {
             setIsSubmitting(false);

@@ -95,6 +95,27 @@ export async function POST(request: Request) {
 
     // Use admin client for insert to bypass RLS (anonymous bookings must be allowed)
     const admin = getSupabaseAdmin();
+
+    // Server-side conflict check for all non-admin bookings. Prevents a client
+    // that bypasses the UI calendar from creating a pending booking on dates
+    // that are already confirmed or blocked by admin.
+    if (!isBlock) {
+      const { data: conflicts } = await admin
+        .from('bookings')
+        .select('id')
+        .eq('property_id', propertyId)
+        .in('status', ['confirmed', 'blocked'])
+        .lte('start_date', endDate)
+        .gte('end_date', startDate);
+
+      if (conflicts && conflicts.length > 0) {
+        return NextResponse.json(
+          { error: 'These dates are no longer available. Please choose different dates.' },
+          { status: 409 }
+        );
+      }
+    }
+
     const { data, error } = await admin
       .from('bookings')
       .insert({

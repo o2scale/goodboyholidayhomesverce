@@ -1,7 +1,8 @@
 import { PropertyCard } from "@/components/property-card";
 import { PropertySearch } from "@/components/property-search";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { Property, Booking } from "@/lib/types";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import type { Property } from "@/lib/types";
 
 interface PropertiesPageProps {
     searchParams: Promise<{
@@ -16,10 +17,17 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
     const { location, guests, startDate, endDate } = await searchParams;
 
     const supabase = await createSupabaseServerClient();
+    // Admin client used server-side for bookings so the availability filter
+    // works for guests too (bookings RLS restricts reads to the owner/admins).
+    // Only date + property_id + status are selected — no customer data.
+    const admin = getSupabaseAdmin();
 
     const [propertiesRes, bookingsRes] = await Promise.all([
         supabase.from("properties").select("*"),
-        supabase.from("bookings").select("*"),
+        admin
+            .from("bookings")
+            .select("property_id, start_date, end_date, status")
+            .in("status", ["pending", "confirmed", "blocked"]),
     ]);
 
     const allProperties: Property[] = (propertiesRes.data ?? []).map((row) => ({
@@ -34,19 +42,12 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
         amenities: row.amenities ?? [],
     }));
 
-    const allBookings: Booking[] = (bookingsRes.data ?? []).map((row) => ({
-        id: row.id,
-        propertyId: row.property_id,
-        userId: row.user_id ?? null,
-        startDate: row.start_date,
-        endDate: row.end_date,
-        guestCount: row.guest_count,
-        status: row.status,
-        customerName: row.customer_name,
-        customerEmail: row.customer_email,
-        customerPhone: row.customer_phone ?? null,
-        includeMeals: row.include_meals ?? false,
-    }));
+    const blockingBookings = (bookingsRes.data ?? []) as Array<{
+        property_id: string;
+        start_date: string;
+        end_date: string;
+        status: string;
+    }>;
 
     // Filtering Logic
     const filteredProperties = allProperties.filter(property => {
@@ -65,14 +66,11 @@ export default async function PropertiesPage({ searchParams }: PropertiesPagePro
             const start = new Date(startDate);
             const end = new Date(endDate);
 
-            // Check for any confirmed booking that overlaps
-            const hasConflict = allBookings.some(booking => {
-                if (booking.propertyId !== property.id) return false;
-                if (booking.status === 'rejected') return false;
-
-                const bookingStart = new Date(booking.startDate);
-                const bookingEnd = new Date(booking.endDate);
-
+            // Any non-rejected booking on this property that overlaps blocks the property
+            const hasConflict = blockingBookings.some(b => {
+                if (b.property_id !== property.id) return false;
+                const bookingStart = new Date(b.start_date);
+                const bookingEnd = new Date(b.end_date);
                 return (start <= bookingEnd) && (end >= bookingStart);
             });
 

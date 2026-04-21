@@ -1,9 +1,10 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { BookingForm } from "@/components/booking-form";
 import { notFound } from "next/navigation";
 import { MapPin, Users, Wifi, Wind, Car, Utensils } from "lucide-react";
 import { PropertyGallery } from "@/components/property-gallery";
-import type { Property, Booking } from "@/lib/types";
+import type { Property } from "@/lib/types";
 
 interface PageProps {
     params: Promise<{
@@ -15,10 +16,18 @@ export default async function PropertyPage({ params }: PageProps) {
     const { id } = await params;
 
     const supabase = await createSupabaseServerClient();
+    // Admin client used server-side to fetch blocked dates (RLS on bookings
+    // restricts reads to the booking owner / admins; guests would otherwise
+    // see zero blocked dates). We only read date ranges, never customer data.
+    const admin = getSupabaseAdmin();
 
     const [propertyRes, bookingsRes] = await Promise.all([
         supabase.from("properties").select("*").eq("id", id).single(),
-        supabase.from("bookings").select("*").eq("property_id", id),
+        admin
+            .from("bookings")
+            .select("start_date, end_date, status")
+            .eq("property_id", id)
+            .in("status", ["confirmed", "blocked"]),
     ]);
 
     if (propertyRes.error || !propertyRes.data) {
@@ -38,26 +47,10 @@ export default async function PropertyPage({ params }: PageProps) {
         amenities: row.amenities ?? [],
     };
 
-    const bookings: Booking[] = (bookingsRes.data ?? []).map((b) => ({
-        id: b.id,
-        propertyId: b.property_id,
-        userId: b.user_id ?? null,
-        startDate: b.start_date,
-        endDate: b.end_date,
-        guestCount: b.guest_count,
-        status: b.status,
-        customerName: b.customer_name,
-        customerEmail: b.customer_email,
-        customerPhone: b.customer_phone ?? null,
-        includeMeals: b.include_meals ?? false,
+    const blockedDates = (bookingsRes.data ?? []).map((b) => ({
+        from: new Date(b.start_date as string),
+        to: new Date(b.end_date as string),
     }));
-
-    const blockedDates = bookings
-        .filter(b => b.status === "confirmed" || b.status === "blocked")
-        .map(b => ({
-            from: new Date(b.startDate),
-            to: new Date(b.endDate)
-        }));
 
     // Helper to get icon for amenity
     const getAmenityIcon = (amenity: string) => {

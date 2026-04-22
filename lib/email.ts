@@ -22,6 +22,10 @@ import nodemailer from 'nodemailer';
 
 const RECIPIENT = 'goodboyholidayhomes@gmail.com';
 
+// Sender address — uses the verified goodboyholidayhomes.com domain on Resend.
+// Replies go to either the customer (when replyTo is set) or this inbox.
+const FROM_ADDRESS = 'noreply@goodboyholidayhomes.com';
+
 interface EmailOptions {
     to?: string;
     subject: string;
@@ -43,8 +47,7 @@ async function sendViaResend(opts: EmailOptions): Promise<boolean> {
     if (!resend) return false;
 
     const fromName = opts.fromName ?? 'Goodboy Holiday Homes';
-    // Resend default sender — works without domain verification
-    const from = `${fromName} <onboarding@resend.dev>`;
+    const from = `${fromName} <${FROM_ADDRESS}>`;
 
     try {
         const { data, error } = await resend.emails.send({

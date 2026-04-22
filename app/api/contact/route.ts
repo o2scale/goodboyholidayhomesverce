@@ -79,6 +79,7 @@ export async function POST(request: Request) {
     await sendEmailNotification({
       to: siteConfig.contact.email,
       replyTo: email,
+      fromKind: 'contact',
       fromName: siteConfig.name,
       subject: `Contact form: ${firstName}${lastName ? ' ' + lastName : ''}`,
       html: `

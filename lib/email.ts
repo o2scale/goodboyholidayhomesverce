@@ -22,9 +22,20 @@ import nodemailer from 'nodemailer';
 
 const RECIPIENT = 'goodboyholidayhomes@gmail.com';
 
-// Sender address — uses the verified goodboyholidayhomes.com domain on Resend.
-// Replies go to either the customer (when replyTo is set) or this inbox.
-const FROM_ADDRESS = 'noreply@goodboyholidayhomes.com';
+// Sender addresses — all use the verified goodboyholidayhomes.com domain on Resend.
+// Different addresses per message type so replies are easier to triage and
+// the recipient sees a meaningful sender (bookings@... vs contact@...).
+const FROM_BOOKINGS = 'bookings@goodboyholidayhomes.com';
+const FROM_CONTACT = 'contact@goodboyholidayhomes.com';
+const FROM_DEFAULT = 'noreply@goodboyholidayhomes.com';
+
+export type EmailFromKind = 'bookings' | 'contact' | 'default';
+
+function pickFrom(kind?: EmailFromKind): string {
+    if (kind === 'bookings') return FROM_BOOKINGS;
+    if (kind === 'contact') return FROM_CONTACT;
+    return FROM_DEFAULT;
+}
 
 interface EmailOptions {
     to?: string;
@@ -33,6 +44,8 @@ interface EmailOptions {
     text?: string;
     replyTo?: string;
     fromName?: string;
+    /** Choose which from-address to send from. Defaults to noreply. */
+    fromKind?: EmailFromKind;
 }
 
 let _resend: Resend | null = null;
@@ -47,7 +60,7 @@ async function sendViaResend(opts: EmailOptions): Promise<boolean> {
     if (!resend) return false;
 
     const fromName = opts.fromName ?? 'Goodboy Holiday Homes';
-    const from = `${fromName} <${FROM_ADDRESS}>`;
+    const from = `${fromName} <${pickFrom(opts.fromKind)}>`;
 
     try {
         const { data, error } = await resend.emails.send({

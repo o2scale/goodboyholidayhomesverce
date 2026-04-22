@@ -143,6 +143,8 @@ export async function POST(request: Request) {
     if (finalStatus === 'pending') {
       await sendEmailNotification({
         to: 'goodboyholidayhomes@gmail.com',
+        fromKind: 'bookings',
+        replyTo: customerEmail || undefined,
         subject: `New Booking Request: ${customerName}`,
         text: `New booking request received!\n\nProperty ID: ${propertyId}\nCustomer: ${customerName}\nPhone: ${customerPhone}\nEmail: ${customerEmail}\nGuests: ${guestCount}\nDates: ${startDate} to ${endDate}\nMeals Included: ${includeMeals ? 'Yes' : 'No'}`,
         html: `
